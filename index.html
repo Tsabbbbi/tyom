@@ -4,37 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f7f4">
-  <title>Lens — Image classifier</title>
+  <title>Lens — Object detector</title>
   <link rel="stylesheet" href="styles.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.3/dist/teachablemachine-image.min.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
-  <header class="header"><a class="brand" href="./" aria-label="Lens home"><span class="brand-mark" aria-hidden="true"></span>lens<span class="brand-divider"></span><span class="brand-caption">Image classifier</span></a><span class="header-note">Powered by Teachable Machine</span></header>
+  <header class="header"><a class="brand" href="./" aria-label="Lens home"><span class="brand-mark" aria-hidden="true"></span>lens<span class="brand-divider"></span><span class="brand-caption">Object detector</span></a><span class="header-note">YOLOv3 + OpenCV</span></header>
   <main>
     <section class="intro"><p class="eyebrow">A little perspective. In real time.</p><h1>See what your model sees.</h1><p>Turn on your camera and explore how your trained model interprets the world in front of it.</p></section>
-    <section class="workspace" aria-label="Image classification workspace">
+    <section class="workspace" aria-label="Object detection workspace">
       <div class="camera-panel">
         <div class="panel-heading"><h2>Camera</h2><span class="status" id="camera-status">Off</span></div>
         <div class="viewfinder" id="viewfinder">
           <video id="video" autoplay muted playsinline hidden aria-label="Live camera preview"></video>
-          <canvas id="frame" width="224" height="224" hidden></canvas>
+          <canvas id="overlay" width="640" height="640" hidden aria-label="Detected object bounding boxes"></canvas>
+          <canvas id="frame" width="640" height="640" hidden></canvas>
           <div class="camera-empty" id="camera-empty"><span class="viewfinder-mark" aria-hidden="true"></span><h3>A new point of view</h3><p>Your camera preview will appear here.</p></div>
           <span class="camera-caption">LIVE PREVIEW <span>1 : 1</span></span>
         </div>
-        <div class="camera-controls"><button id="start" type="button">Start camera <span aria-hidden="true">↗</span></button><button id="stop" class="secondary" type="button" disabled>Stop</button><span class="privacy">Video stays in your browser.</span></div>
+        <div class="camera-controls"><button id="start" type="button">Start camera <span aria-hidden="true">↗</span></button><button id="stop" class="secondary" type="button" disabled>Stop</button><span class="privacy">Frames are sent to your server.</span></div>
         <p id="message" class="message" role="status" aria-live="polite">Ready when you are. Allow camera access to begin.</p>
       </div>
       <aside class="results-panel" aria-labelledby="results-heading">
-        <div class="panel-heading"><h2 id="results-heading">Predictions</h2><span class="eyebrow" id="class-count">YOUR MODEL</span></div>
+        <div class="panel-heading"><h2 id="results-heading">Detected objects</h2><span class="eyebrow" id="class-count">80 CLASSES</span></div>
         <div class="result-summary"><p class="eyebrow">TOP MATCH</p><h3 id="top-match">Waiting to see</h3><p id="result-note">Start your camera to see a prediction.</p></div>
-        <div id="predictions" class="predictions"><p class="placeholder">Your model’s classes will appear here.</p></div>
-        <div class="results-help"><span class="help-label">Understanding the results</span><p>Confidence shows how closely the image matches each trained class. It isn’t a guarantee of accuracy.</p></div>
+        <div id="predictions" class="predictions"><p class="placeholder">Detected objects will appear here.</p></div>
+        <div class="results-help"><span class="help-label">Understanding the results</span><p>Boxes show objects in the latest analyzed frame. YOLOv3 recognizes 80 common object classes, not individual identities.</p></div>
       </aside>
     </section>
     <section class="tips" aria-label="Camera tips"><h2>Make every frame count.</h2><p>Use good lighting, keep your subject in view, and try different angles to see how the predictions change.</p></section>
   </main>
-  <footer><span>Built with Teachable Machine</span><span>On-device image classification</span></footer>
+  <footer><span>Powered by YOLOv3 and OpenCV</span><span>Server-side object detection</span></footer>
 </body>
 </html>
