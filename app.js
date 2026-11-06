@@ -50,8 +50,8 @@ async function start() {
     if (!window.tmImage || !window.tf) throw new Error('The image libraries could not load. Check your internet connection and reload the page.');
     message('Loading your image model…');
     if (!model) {
-      // Model and metadata are beside index.html, not inside a my_model folder.
-      model = await tmImage.load('./model.json', './metadata.json');
+      // Load the exported model from the model directory.
+      model = await tmImage.load('./model/model.json', './model/metadata.json');
       $('predictions').replaceChildren();
       rows = model.getClassLabels().map((label) => {
         const row = document.createElement('div'); row.className = 'prediction';
