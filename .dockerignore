@@ -1,7 +1,11 @@
 .git
+.gitignore
 .DS_Store
+node_modules
+dist
+legacy
 .venv
 __pycache__
-model
-models/*.weights
-tests
+test-results
+.scratch
+*.md

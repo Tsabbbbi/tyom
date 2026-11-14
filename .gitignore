@@ -1,7 +1,10 @@
 .DS_Store
 node_modules/
+dist/
 .venv/
 __pycache__/
 *.pyc
-models/*.weights
-models/*.download
+test-results/
+.scratch/
+legacy/yolo-detector/models/*.weights
+legacy/yolo-detector/models/*.download

@@ -1,55 +1,73 @@
-# Lens — YOLOv3 object detection
+# Duke Library Quest
 
-A neumorphic camera UI backed by YOLOv3 and OpenCV, based on [arunponnusamy/object-detection-opencv](https://github.com/arunponnusamy/object-detection-opencv). Detects 80 COCO object categories and shows confidence scores and bounding boxes. It does not recognize individual people by name.
+A hand-gesture-controlled, top-down pixel-art exploration game. Pick the **Duke Blue Devil** or the **DKU Blue Deer**,
+explore a Gothic Duke-inspired library and collect **five books** by pointing your index finger at your webcam
+(or with WASD / arrow keys).
 
-**Camera frames are sent to your server for inference.** The application processes them in memory without saving them. Stop releases the camera and cancels further requests. Boxes describe the most recently analyzed frame, so moving objects may outpace inference.
+* Phaser 3 + TypeScript + Vite
+* Google MediaPipe Tasks Vision **Hand Landmarker** (runs 100% in the browser; webcam frames never leave the device)
+* Procedural pixel-art sprites/tiles and a procedural WebAudio sound system (no binary art/audio assets)
+* Static build served by nginx in Docker (port **8000**)
 
-## Dokploy deployment
+## Controls
 
-This is now a Python service, not a static website. Change the existing Dokploy application settings before deploying:
+| Gesture (index finger extended, other fingers curled) | Action |
+|---|---|
+| Point up / down / left / right | Walk in that direction (keeps walking while held) |
+| No hand / open palm / fist | Stop |
 
-| Setting | Value |
-| --- | --- |
-| Repository branch | `main` |
-| Build path / context | `/` (repository root) |
-| Build type | `Dockerfile` |
-| Dockerfile path | `Dockerfile` |
-| Domain container port | `8000` |
-| HTTPS | Enable (required for camera access) |
-| Health endpoint | `/api/health` |
+Keyboard `WASD` / arrow keys always work and take priority over gestures. `Esc` pauses.
+Camera mirroring (selfie view) is a setting; with it ON, pointing to *your* right moves right on screen.
 
-Save settings and deploy. The image build downloads and verifies the approximately 248 MB YOLOv3 weights. Build-time internet access is required; inference needs no external services. Allow time for the first build and model startup. CPU inference speed depends on the host; start with at least 2 GB RAM and monitor actual usage. One worker loads one model; requests are bounded rather than queued indefinitely.
+## Develop
 
-A successful health request returns `ready: true`, `model: YOLOv3`, and `classes: 80`. A static server or `python -m http.server` cannot run detection.
-
-## Local development (Python 3.12)
-
-```sh
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python download_model.py
-flask --app 'server:create_app()' run --port 8000
+```bash
+npm install
+npm run dev          # http://localhost:5173  (add ?debug=1 to expose window.__DLQ__ for tests)
+npm test             # vitest: gesture classifier + map reachability
+npm run build        # type-check + production build into dist/
+npm run preview      # serve dist/ on :4173
 ```
 
-Open http://localhost:8000 and click **Start camera**. Or run the production container:
+End-to-end smoke test (Playwright; uses Chromium's fake camera + mocked landmarks):
 
-```sh
-docker build -t lens .
-docker run --rm -p 8000:8000 lens
+```bash
+npm run build && npx vite preview --port 4173 &
+APP_URL=http://localhost:4173 PW_CHANNEL=chrome node e2e/flow.mjs   # PW_CHANNEL optional
 ```
 
-## Tests
+## Architecture
 
-```sh
-python -m unittest discover -s tests -v
-node --check app.js
+```
+src/
+  main.ts, app.ts, services.ts        bootstrap, scene/screen flow, shared singletons
+  game/
+    config.ts                         Phaser config (640x360 logical, pixelArt, FIT scaling)
+    scenes/                           Boot, Menu, CharacterSelect, Library, Victory (+ shared backdrop)
+    entities/                         Player (tile collision, corner assist), CollectibleBook
+    systems/
+      GestureClassifier.ts            pure landmark -> direction classifier + temporal smoother (unit-tested)
+      HandTracking.ts                 webcam + MediaPipe HandLandmarker (GPU delegate, CPU fallback), ~24 FPS loop
+      InputManager.ts                 keyboard + gesture merge, stale-gesture watchdog, focus-loss handling
+      AudioManager.ts                 WebAudio music/SFX + speechSynthesis voice lines
+      Minimap.ts, Settings.ts
+    data/libraryMap.ts                48x34 tile layout, book spots, collision helpers
+    assets/                           pixel.ts helpers, sprites.ts (characters), worldArt.ts (tiles/objects)
+  ui/                                 DOM screens, HUD, camera preview, pixel-UI CSS
+public/models/hand_landmarker.task    MediaPipe model (served locally)
+public/wasm/                          MediaPipe WASM runtime (copied from @mediapipe/tasks-vision)
 ```
 
-The API accepts JPEG request bodies at `POST /api/detect` (2 MB maximum, dimensions up to 2048 per side). It returns normalized `[x, y, width, height]` boxes. The browser sends mirrored, square 640px frames one at a time. Threshold: 0.5; class-aware NMS: 0.4.
+Gesture pipeline: `HandTracker` (inference, ~24 FPS) → `InputManager.ingestLandmarks` → `classifyGesture`
+(index extension/straightness, other fingers curled, MCP→tip angle with dead zone + hysteresis, mirroring) →
+`GestureSmoother` (needs 2 consecutive frames to switch / stop). A lost hand clears movement immediately and a gesture
+older than 300 ms is ignored, so the character can never keep walking on a stale gesture.
 
-## Attribution
+## Deploy (Dokploy)
 
-The YOLOv3 configuration and COCO labels come from Arun Ponnusamy's repository. Its MIT license is preserved in `models/LICENSE.upstream`. The Python inference follows that project's OpenCV DNN approach, adapted for a web service and modern OpenCV. Weights come from https://pjreddie.com/media/files/yolov3.weights and are checksum-verified. The large weights are downloaded during builds rather than committed to Git.
+`Dockerfile` is a two-stage build (Node 22 build → `nginx-unprivileged`), serving on **port 8000**, the port the repo's
+previous Dokploy service already used. Point the Dokploy domain/port at `8000`. The webcam needs a secure context, so
+serve over **HTTPS** (Traefik/Let's Encrypt via Dokploy) — `localhost` also works. `nginx.conf` provides the SPA fallback,
+`application/wasm`, caching and `/healthz`.
 
-The previous Teachable Machine files in `model/` are retained only as an unused archive and excluded from the container.
+The previous project in this repo (a YOLOv3 object-detection service) is preserved in `legacy/yolo-detector/`.
